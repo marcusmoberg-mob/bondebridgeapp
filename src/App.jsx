@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 
-const MIN_PLAYERS = 2;
-const MAX_PLAYERS = 5;
+const MIN_PLAYERS = 3;
+const MAX_PLAYERS = 6;
 const STORAGE_KEY = "bondebridge.savedPlayers.v1";
 
 function clamp(value, min, max) {
@@ -110,7 +110,7 @@ function loadSavedPlayers() {
 
 function validateSetup(players, peakCards) {
   if (players.length < MIN_PLAYERS || players.length > MAX_PLAYERS) {
-    return { valid: false, message: "Velg mellom 2 og 5 spillere." };
+    return { valid: false, message: "Velg mellom 3 og 6 spillere." };
   }
 
   if (peakCards < 1) {
@@ -390,10 +390,10 @@ export default function App() {
               <div className="field-group compact top-control player-count-group">
                 <label>Antall spillere</label>
                 <div className="count-chips player-count-clean">
-                  {[2, 3, 4, 5].map((count) => (
-                    <button
-                      key={count}
-                      type="button"
+                {[3, 4, 5, 6].map((count) => (
+                  <button
+                    key={count}
+                    type="button"
                       className={count === playerCount ? "active" : ""}
                       onClick={() => changePlayerCount(count)}
                     >

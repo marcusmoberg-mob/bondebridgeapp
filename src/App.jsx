@@ -26,6 +26,56 @@ function pointsForRound(bid, stood) {
   return 10 + bidNumber * bidNumber;
 }
 
+function buildPlayerStats(rounds, players) {
+  const statsMap = Object.fromEntries(
+    players.map((player) => [
+      player.seatId,
+      {
+        basePoints: 0,
+        streakPenalty: 0,
+        warningPenalty: 0,
+        warnings: 0,
+        total: 0,
+      },
+    ])
+  );
+
+  players.forEach((player) => {
+    let missedInARow = 0;
+    let warningCount = 0;
+
+    rounds.forEach((round) => {
+      const stood = round.stood[player.seatId];
+      const warningsInRound = Number(round.warnings?.[player.seatId] || 0);
+
+      statsMap[player.seatId].basePoints += pointsForRound(
+        round.bids[player.seatId],
+        stood
+      );
+
+      if (stood) {
+        missedInARow = 0;
+      } else {
+        missedInARow += 1;
+        if (missedInARow === 3) statsMap[player.seatId].streakPenalty -= 10;
+        if (missedInARow === 6) statsMap[player.seatId].streakPenalty -= 30;
+      }
+
+      warningCount += warningsInRound;
+      const penaltySteps = Math.floor(warningCount / 2);
+      statsMap[player.seatId].warningPenalty = penaltySteps * -10;
+      statsMap[player.seatId].warnings = warningCount;
+    });
+
+    statsMap[player.seatId].total =
+      statsMap[player.seatId].basePoints +
+      statsMap[player.seatId].streakPenalty +
+      statsMap[player.seatId].warningPenalty;
+  });
+
+  return statsMap;
+}
+
 function computeOverUnder(totalBids, cards) {
   const delta = totalBids - cards;
   if (delta === 0) {
@@ -70,10 +120,12 @@ function buildRounds(cardsFlow, players, previousRounds = []) {
     const previous = previousRounds[index];
     const bids = { ...(previous?.bids || {}) };
     const stood = { ...(previous?.stood || {}) };
+    const warnings = { ...(previous?.warnings || {}) };
 
     players.forEach((player) => {
       if (!(player.seatId in bids)) bids[player.seatId] = "";
       if (!(player.seatId in stood)) stood[player.seatId] = true;
+      if (!(player.seatId in warnings)) warnings[player.seatId] = 0;
     });
 
     return {
@@ -82,6 +134,7 @@ function buildRounds(cardsFlow, players, previousRounds = []) {
       cards,
       bids,
       stood,
+      warnings,
     };
   });
 }
@@ -177,20 +230,16 @@ export default function App() {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(savedPlayers));
   }, [savedPlayers]);
 
-  const totals = useMemo(() => {
-    const totalMap = Object.fromEntries(players.map((player) => [player.seatId, 0]));
-    if (phase !== "game") return totalMap;
-
-    rounds.forEach((round) => {
-      players.forEach((player) => {
-        totalMap[player.seatId] += pointsForRound(
-          round.bids[player.seatId],
-          round.stood[player.seatId]
-        );
-      });
-    });
-
-    return totalMap;
+  const playerStats = useMemo(() => {
+    if (phase !== "game") {
+      return Object.fromEntries(
+        players.map((player) => [
+          player.seatId,
+          { basePoints: 0, streakPenalty: 0, warningPenalty: 0, warnings: 0, total: 0 },
+        ])
+      );
+    }
+    return buildPlayerStats(rounds, players);
   }, [phase, players, rounds]);
 
   const currentRound = rounds[roundIndex];
@@ -634,12 +683,14 @@ export default function App() {
               <span>Spiller</span>
               <span>Melding</span>
               <span>Status</span>
+              <span>Warnings</span>
               <span>Poeng</span>
               <span>Total</span>
             </div>
             {players.map((player) => {
               const bidValue = currentRound?.bids[player.seatId] ?? "";
               const stoodValue = currentRound?.stood[player.seatId] ?? true;
+              const warningValue = Number(currentRound?.warnings[player.seatId] ?? 0);
               const roundPoints = pointsForRound(bidValue, stoodValue);
 
               return (
@@ -680,8 +731,33 @@ export default function App() {
                       Stryk
                     </button>
                   </label>
+                  <div className="warning-controls">
+                    <button
+                      type="button"
+                      className="warning-button"
+                      onClick={() =>
+                        updateRoundField(
+                          player.seatId,
+                          "warnings",
+                          Math.max(0, warningValue - 1)
+                        )
+                      }
+                    >
+                      -
+                    </button>
+                    <span className="warning-value">{warningValue}</span>
+                    <button
+                      type="button"
+                      className="warning-button"
+                      onClick={() =>
+                        updateRoundField(player.seatId, "warnings", warningValue + 1)
+                      }
+                    >
+                      +
+                    </button>
+                  </div>
                   <span className="mono">{roundPoints}</span>
-                  <span className="mono">{totals[player.seatId]}</span>
+                  <span className="mono">{playerStats[player.seatId].total}</span>
                 </div>
               );
             })}
@@ -693,8 +769,15 @@ export default function App() {
           <div className="scoreboard">
             {players.map((player) => (
               <div className="score-card" key={player.seatId}>
-                <span>{player.name}</span>
-                <strong>{totals[player.seatId]}</strong>
+                <div className="score-card-copy">
+                  <span>{player.name}</span>
+                  <small>
+                    Warnings: {playerStats[player.seatId].warnings} | Streak:{" "}
+                    {playerStats[player.seatId].streakPenalty} | Warning-trekk:{" "}
+                    {playerStats[player.seatId].warningPenalty}
+                  </small>
+                </div>
+                <strong>{playerStats[player.seatId].total}</strong>
               </div>
             ))}
           </div>

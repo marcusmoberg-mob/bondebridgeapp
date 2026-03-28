@@ -682,7 +682,7 @@ button {
 
 .row {
   display: grid;
-  grid-template-columns: 1.2fr 1.7fr 1.15fr 0.62fr 0.62fr;
+  grid-template-columns: 1.15fr 1.55fr 1fr 0.92fr 0.55fr 0.62fr;
   gap: 10px;
   align-items: center;
   padding: 12px 0;
@@ -710,6 +710,31 @@ button {
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+.warning-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.warning-button {
+  min-width: 38px;
+  min-height: 38px;
+  padding: 0;
+  border-radius: 10px;
+  border-color: rgba(27, 42, 55, 0.14);
+  background: rgba(255, 255, 255, 0.95);
+  font-size: 18px;
+  line-height: 1;
+}
+
+.warning-value {
+  min-width: 22px;
+  text-align: center;
+  font-size: 18px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
 }
 
 .state-button {
@@ -763,6 +788,18 @@ button {
   justify-content: space-between;
   align-items: center;
   font-size: 18px;
+  gap: 16px;
+}
+
+.score-card-copy {
+  display: grid;
+  gap: 4px;
+}
+
+.score-card-copy small {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.35;
 }
 
 .score-card strong {

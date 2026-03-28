@@ -3,6 +3,7 @@ import React, { useEffect, useMemo, useState } from "react";
 const MIN_PLAYERS = 3;
 const MAX_PLAYERS = 6;
 const STORAGE_KEY = "bondebridge.savedPlayers.v1";
+const VIEW_MODE_STORAGE_KEY = "bondebridge.viewMode.v1";
 
 function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
@@ -161,6 +162,44 @@ function loadSavedPlayers() {
   }
 }
 
+function loadViewMode() {
+  if (typeof window === "undefined") return "desktop";
+  const saved = window.localStorage.getItem(VIEW_MODE_STORAGE_KEY);
+  return saved === "tablet" ? "tablet" : "desktop";
+}
+
+function ViewModeToggle({ viewMode, onChange }) {
+  return (
+    <div className="view-mode-toggle" aria-label="Velg visning">
+      <button
+        type="button"
+        className={viewMode === "desktop" ? "active" : ""}
+        onClick={() => onChange("desktop")}
+        aria-label="Desktop-visning"
+        title="Desktop-visning"
+      >
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <rect x="3" y="4" width="18" height="12" rx="2" />
+          <path d="M9 20h6" />
+          <path d="M12 16v4" />
+        </svg>
+      </button>
+      <button
+        type="button"
+        className={viewMode === "tablet" ? "active" : ""}
+        onClick={() => onChange("tablet")}
+        aria-label="iPad-visning"
+        title="iPad-visning"
+      >
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <rect x="6" y="2.5" width="12" height="19" rx="2.5" />
+          <circle cx="12" cy="18.5" r="0.8" fill="currentColor" stroke="none" />
+        </svg>
+      </button>
+    </div>
+  );
+}
+
 function validateSetup(players, peakCards) {
   if (players.length < MIN_PLAYERS || players.length > MAX_PLAYERS) {
     return { valid: false, message: "Velg mellom 3 og 6 spillere." };
@@ -202,6 +241,7 @@ function shouldShowSaveButton(player, seatIndex, savedPlayers) {
 }
 
 export default function App() {
+  const [viewMode, setViewMode] = useState(() => loadViewMode());
   const [phase, setPhase] = useState("setup");
   const [playerCount, setPlayerCount] = useState(4);
   const [players, setPlayers] = useState(() => createSessionPlayers(4));
@@ -229,6 +269,11 @@ export default function App() {
     if (typeof window === "undefined") return;
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(savedPlayers));
   }, [savedPlayers]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(VIEW_MODE_STORAGE_KEY, viewMode);
+  }, [viewMode]);
 
   const playerStats = useMemo(() => {
     if (phase !== "game") {
@@ -426,7 +471,11 @@ export default function App() {
     const maxCardsPossible = getMaxCardsPerPlayer(playerCount);
 
     return (
-      <div className="start-shell">
+      <div className={`app-shell view-${viewMode}`}>
+        <div className="app-topbar">
+          <ViewModeToggle viewMode={viewMode} onChange={setViewMode} />
+        </div>
+        <div className="start-shell">
         <section className="start-card">
           <p className="eyebrow">Bondebridge</p>
           <h1>Nytt spill</h1>
@@ -632,12 +681,17 @@ export default function App() {
             Start spill
           </button>
         </section>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="game-shell">
+    <div className={`app-shell view-${viewMode}`}>
+      <div className="app-topbar">
+        <ViewModeToggle viewMode={viewMode} onChange={setViewMode} />
+      </div>
+      <div className="game-shell">
       <header className="game-header">
         <div>
           <p className="eyebrow">Bondebridge</p>
@@ -783,6 +837,7 @@ export default function App() {
           </div>
         </section>
       </main>
+      </div>
     </div>
   );
 }

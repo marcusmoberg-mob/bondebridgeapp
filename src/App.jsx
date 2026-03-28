@@ -788,7 +788,7 @@ export default function App() {
                   <div className="warning-controls">
                     <button
                       type="button"
-                      className="warning-button"
+                      className="warning-button subtle"
                       onClick={() =>
                         updateRoundField(
                           player.seatId,
@@ -797,17 +797,17 @@ export default function App() {
                         )
                       }
                     >
-                      -
+                      W-
                     </button>
                     <span className="warning-value">{warningValue}</span>
                     <button
                       type="button"
-                      className="warning-button"
+                      className="warning-button danger"
                       onClick={() =>
                         updateRoundField(player.seatId, "warnings", warningValue + 1)
                       }
                     >
-                      +
+                      W+
                     </button>
                   </div>
                   <span className="mono">{roundPoints}</span>
@@ -818,7 +818,7 @@ export default function App() {
           </div>
         </section>
 
-        <section className="panel">
+        <section className="panel score-panel">
           <h3>Totalscore</h3>
           <div className="scoreboard">
             {players.map((player) => (
@@ -826,9 +826,10 @@ export default function App() {
                 <div className="score-card-copy">
                   <span>{player.name}</span>
                   <small>
-                    Warnings: {playerStats[player.seatId].warnings} | Streak:{" "}
-                    {playerStats[player.seatId].streakPenalty} | Warning-trekk:{" "}
-                    {playerStats[player.seatId].warningPenalty}
+                    Warnings {playerStats[player.seatId].warnings} ({playerStats[player.seatId].warningPenalty})
+                  </small>
+                  <small>
+                    Stryk-straff {playerStats[player.seatId].streakPenalty}
                   </small>
                 </div>
                 <strong>{playerStats[player.seatId].total}</strong>

@@ -749,15 +749,25 @@ export default function App() {
 
               return (
                 <div className="row" key={player.seatId}>
-                  <span className="player-cell">
-                    <span className="avatar-wrap tiny">
-                      {player.avatar ? <img src={player.avatar} alt={player.name} /> : <span>{player.name[0]}</span>}
+                  <div className="row-section player-section">
+                    <span className="player-cell">
+                      <span className="avatar-wrap tiny">
+                        {player.avatar ? (
+                          <img src={player.avatar} alt={player.name} />
+                        ) : (
+                          <span>{player.name[0]}</span>
+                        )}
+                      </span>
+                      {player.name}
                     </span>
-                    {player.name}
-                  </span>
-                  <div className="count-chips bid-picker">
-                    {Array.from({ length: (currentRound?.cards ?? peakCards) + 1 }, (_, i) => i).map(
-                      (bid) => (
+                  </div>
+                  <div className="row-section bid-section">
+                    <span className="section-label">Melding</span>
+                    <div className="count-chips bid-picker">
+                      {Array.from(
+                        { length: (currentRound?.cards ?? peakCards) + 1 },
+                        (_, i) => i
+                      ).map((bid) => (
                         <button
                           key={`${player.seatId}-${bid}`}
                           type="button"
@@ -766,52 +776,64 @@ export default function App() {
                         >
                           {bid}
                         </button>
-                      )
-                    )}
+                      ))}
+                    </div>
                   </div>
-                  <label className="toggle">
-                    <button
-                      type="button"
-                      className={`state-button stand ${stoodValue ? "active" : ""}`}
-                      onClick={() => updateRoundField(player.seatId, "stood", true)}
-                    >
-                      Stå
-                    </button>
-                    <button
-                      type="button"
-                      className={`state-button strike ${!stoodValue ? "active" : ""}`}
-                      onClick={() => updateRoundField(player.seatId, "stood", false)}
-                    >
-                      Stryk
-                    </button>
-                  </label>
-                  <div className="warning-controls">
-                    <button
-                      type="button"
-                      className="warning-button subtle"
-                      onClick={() =>
-                        updateRoundField(
-                          player.seatId,
-                          "warnings",
-                          Math.max(0, warningValue - 1)
-                        )
-                      }
-                    >
-                      W-
-                    </button>
-                    <span className="warning-value">{warningValue}</span>
-                    <button
-                      type="button"
-                      className="warning-button danger"
-                      onClick={() =>
-                        updateRoundField(player.seatId, "warnings", warningValue + 1)
-                      }
-                    >
-                      W+
-                    </button>
+                  <div className="row-section status-section">
+                    <span className="section-label">Status</span>
+                    <label className="toggle">
+                      <button
+                        type="button"
+                        className={`state-button stand ${stoodValue ? "active" : ""}`}
+                        onClick={() => updateRoundField(player.seatId, "stood", true)}
+                      >
+                        Stå
+                      </button>
+                      <button
+                        type="button"
+                        className={`state-button strike ${!stoodValue ? "active" : ""}`}
+                        onClick={() => updateRoundField(player.seatId, "stood", false)}
+                      >
+                        Stryk
+                      </button>
+                    </label>
                   </div>
-                  <span className="mono">{roundPoints}</span>
-                  <span className="mono">{playerStats[player.seatId].total}</span>
+                  <div className="row-section warning-section">
+                    <span className="section-label">Warnings</span>
+                    <div className="warning-controls">
+                      <button
+                        type="button"
+                        className="warning-button subtle"
+                        onClick={() =>
+                          updateRoundField(
+                            player.seatId,
+                            "warnings",
+                            Math.max(0, warningValue - 1)
+                          )
+                        }
+                      >
+                        W-
+                      </button>
+                      <span className="warning-value">{warningValue}</span>
+                      <button
+                        type="button"
+                        className="warning-button danger"
+                        onClick={() =>
+                          updateRoundField(player.seatId, "warnings", warningValue + 1)
+                        }
+                      >
+                        W+
+                      </button>
+                    </div>
+                  </div>
+                  <div className="row-section points-section">
+                    <span className="section-label">Poeng</span>
+                    <span className="mono">{roundPoints}</span>
+                  </div>
+                  <div className="row-section total-section">
+                    <span className="section-label">Total</span>
+                    <span className="mono">{playerStats[player.seatId].total}</span>
+                  </div>
                 </div>
               );
             })}

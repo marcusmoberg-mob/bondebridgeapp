@@ -1013,6 +1013,12 @@ button {
   border-left: 2px solid transparent;
   border-right: 2px solid transparent;
   border-radius: 0;
+  position: relative;
+  z-index: 2;
+  margin-top: -10px;
+  margin-bottom: -10px;
+  padding-top: 10px;
+  padding-bottom: 10px;
 }
 
 .round-score-value.penalty-three-window {
@@ -1034,6 +1040,7 @@ button {
   border-top: 2px solid currentColor;
   border-top-left-radius: 8px;
   border-top-right-radius: 8px;
+  padding-top: 12px;
 }
 
 .round-score-value.penalty-three-window.window-end,
@@ -1041,6 +1048,7 @@ button {
   border-bottom: 2px solid currentColor;
   border-bottom-left-radius: 8px;
   border-bottom-right-radius: 8px;
+  padding-bottom: 12px;
 }
 
 .score-card strong {
@@ -1073,6 +1081,7 @@ button {
   padding: 8px 0;
   border-bottom: 1px solid rgba(27, 42, 55, 0.08);
   font-size: 13px;
+  position: relative;
 }
 
 .round-score-row.header {

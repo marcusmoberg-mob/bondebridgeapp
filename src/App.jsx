@@ -250,6 +250,7 @@ function createDefaultGameState(playerCount = 4) {
     roundIndex: 0,
     rounds: buildRounds(getCardFlowFromPeak(peakCards), basePlayers),
     savedPlayers: [],
+    resumableGame: null,
   };
 }
 
@@ -405,6 +406,7 @@ export default function App() {
   const [peakCards, setPeakCards] = useState(getMaxCardsPerPlayer(4));
   const [roundIndex, setRoundIndex] = useState(0);
   const [savedPlayers, setSavedPlayers] = useState([]);
+  const [resumableGame, setResumableGame] = useState(null);
   const [newPlayerName, setNewPlayerName] = useState("");
   const [newPlayerAvatar, setNewPlayerAvatar] = useState("");
   const [dragSeatId, setDragSeatId] = useState(null);
@@ -452,6 +454,7 @@ export default function App() {
       setRoundIndex(fallbackState.roundIndex);
       setRounds(fallbackState.rounds);
       setSavedPlayers(fallbackState.savedPlayers);
+      setResumableGame(fallbackState.resumableGame);
       setHasLoadedUserData(false);
       return;
     }
@@ -487,6 +490,23 @@ export default function App() {
     setSavedPlayers(
       Array.isArray(nextState.savedPlayers) ? nextState.savedPlayers : fallbackState.savedPlayers
     );
+    setResumableGame(
+      nextState.resumableGame ||
+        (nextState.phase === "game"
+          ? {
+              phase: "game",
+              playerCount: clamp(
+                Number(nextState.playerCount || fallbackState.playerCount),
+                MIN_PLAYERS,
+                MAX_PLAYERS
+              ),
+              players: nextPlayers,
+              peakCards: nextPeakCards,
+              roundIndex: clamp(Number(nextState.roundIndex || 0), 0, normalizedRounds.length - 1),
+              rounds: normalizedRounds,
+            }
+          : null)
+    );
     setHasLoadedUserData(true);
   }, [currentUser]);
 
@@ -500,6 +520,17 @@ export default function App() {
       roundIndex,
       rounds,
       savedPlayers,
+      resumableGame:
+        phase === "game"
+          ? {
+              phase: "game",
+              playerCount,
+              players,
+              peakCards,
+              roundIndex,
+              rounds,
+            }
+          : resumableGame,
     });
   }, [
     currentUser,
@@ -511,6 +542,7 @@ export default function App() {
     roundIndex,
     rounds,
     savedPlayers,
+    resumableGame,
   ]);
 
   const scoreSummary = useMemo(() => {
@@ -684,6 +716,14 @@ export default function App() {
       name: player.name.trim() || `Spiller ${index + 1}`,
     }));
     const nextRounds = buildRounds(cardsFlow, normalizedPlayers);
+    setResumableGame({
+      phase: "game",
+      playerCount,
+      players: normalizedPlayers,
+      peakCards,
+      roundIndex: 0,
+      rounds: nextRounds,
+    });
     setPlayers(normalizedPlayers);
     setRounds(nextRounds);
     setRoundIndex(0);
@@ -692,10 +732,40 @@ export default function App() {
   };
 
   const backToSetup = () => {
+    setResumableGame({
+      phase: "game",
+      playerCount,
+      players,
+      peakCards,
+      roundIndex,
+      rounds,
+    });
     setPhase("setup");
     setRoundIndex(0);
     setShowAllRounds(false);
     setRounds(buildRounds(cardsFlow, players));
+  };
+
+  const resumeGame = () => {
+    if (!resumableGame) return;
+    const normalizedPlayers =
+      Array.isArray(resumableGame.players) && resumableGame.players.length
+        ? resumableGame.players
+        : createSessionPlayers(playerCount);
+    const normalizedPeakCards = Number(resumableGame.peakCards || getMaxCardsPerPlayer(normalizedPlayers.length));
+    const normalizedRounds = buildRounds(
+      getCardFlowFromPeak(normalizedPeakCards),
+      normalizedPlayers,
+      Array.isArray(resumableGame.rounds) ? resumableGame.rounds : []
+    );
+
+    setPlayerCount(clamp(Number(resumableGame.playerCount || normalizedPlayers.length), MIN_PLAYERS, MAX_PLAYERS));
+    setPlayers(normalizedPlayers);
+    setPeakCards(normalizedPeakCards);
+    setRounds(normalizedRounds);
+    setRoundIndex(clamp(Number(resumableGame.roundIndex || 0), 0, normalizedRounds.length - 1));
+    setShowAllRounds(false);
+    setPhase("game");
   };
 
   const updateRoundField = (seatId, field, value) => {
@@ -865,6 +935,21 @@ export default function App() {
           <p className="lead">
             Velg spillere med klikk, velg maks kort for rundeoppsett, og start når alt er klart.
           </p>
+
+          {resumableGame && (
+            <div className="resume-card">
+              <div>
+                <strong>Pågående spill funnet</strong>
+                <p>
+                  Runde {Number(resumableGame.roundIndex || 0) + 1} av{" "}
+                  {Array.isArray(resumableGame.rounds) ? resumableGame.rounds.length : 0}
+                </p>
+              </div>
+              <button type="button" className="resume-button" onClick={resumeGame}>
+                Fortsett spill
+              </button>
+            </div>
+          )}
 
           <div className="setup-grid">
             <div className="top-controls">

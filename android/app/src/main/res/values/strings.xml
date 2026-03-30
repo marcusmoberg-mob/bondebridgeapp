@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Bondebridge</string>
+    <string name="title_activity_main">Bondebridge</string>
+    <string name="package_name">com.marcusmoberg.bondebridge</string>
+    <string name="custom_url_scheme">com.marcusmoberg.bondebridge</string>
+</resources>

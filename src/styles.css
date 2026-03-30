@@ -994,8 +994,7 @@ button {
   border-radius: 8px;
 }
 
-.score-total.penalty-three,
-.round-score-value.penalty-three {
+.score-total.penalty-three {
   border: 2px solid rgba(216, 75, 75, 0.34);
 }
 
@@ -1004,10 +1003,44 @@ button {
   background: rgba(216, 75, 75, 0.08);
 }
 
-.score-total.penalty-six,
-.round-score-value.penalty-six {
+.score-total.penalty-six {
   border: 2px solid rgba(155, 47, 47, 0.55);
   background: rgba(216, 75, 75, 0.08);
+}
+
+.round-score-value.penalty-three-window,
+.round-score-value.penalty-six-window {
+  border-left: 2px solid transparent;
+  border-right: 2px solid transparent;
+  border-radius: 0;
+}
+
+.round-score-value.penalty-three-window {
+  color: #b13a3a;
+  border-left-color: rgba(216, 75, 75, 0.34);
+  border-right-color: rgba(216, 75, 75, 0.34);
+  background: rgba(216, 75, 75, 0.05);
+}
+
+.round-score-value.penalty-six-window {
+  color: #8f2727;
+  border-left-color: rgba(155, 47, 47, 0.55);
+  border-right-color: rgba(155, 47, 47, 0.55);
+  background: rgba(216, 75, 75, 0.08);
+}
+
+.round-score-value.penalty-three-window.window-start,
+.round-score-value.penalty-six-window.window-start {
+  border-top: 2px solid currentColor;
+  border-top-left-radius: 8px;
+  border-top-right-radius: 8px;
+}
+
+.round-score-value.penalty-three-window.window-end,
+.round-score-value.penalty-six-window.window-end {
+  border-bottom: 2px solid currentColor;
+  border-bottom-left-radius: 8px;
+  border-bottom-right-radius: 8px;
 }
 
 .score-card strong {

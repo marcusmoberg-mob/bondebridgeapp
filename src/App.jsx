@@ -139,6 +139,42 @@ function buildScoreSummary(rounds, players) {
   return { statsMap, roundRows };
 }
 
+function getRoundScoreWindowClass(rows, rowIndex, seatId) {
+  const value = rows[rowIndex]?.values?.[seatId];
+  if (!value) return "";
+
+  const windowType = value.penaltySixWindow
+    ? "penalty-six-window"
+    : value.penaltyThreeWindow
+      ? "penalty-three-window"
+      : value.warningWindow
+        ? "penalty-warning"
+        : "";
+
+  if (!windowType || windowType === "penalty-warning") {
+    return windowType;
+  }
+
+  const prevValue = rows[rowIndex - 1]?.values?.[seatId];
+  const nextValue = rows[rowIndex + 1]?.values?.[seatId];
+  const prevMatches =
+    windowType === "penalty-six-window"
+      ? Boolean(prevValue?.penaltySixWindow)
+      : Boolean(prevValue?.penaltyThreeWindow);
+  const nextMatches =
+    windowType === "penalty-six-window"
+      ? Boolean(nextValue?.penaltySixWindow)
+      : Boolean(nextValue?.penaltyThreeWindow);
+
+  return [
+    windowType,
+    !prevMatches ? "window-start" : "",
+    !nextMatches ? "window-end" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+}
+
 function computeOverUnder(totalBids, cards) {
   const delta = totalBids - cards;
   if (delta === 0) {
@@ -1257,21 +1293,17 @@ export default function App() {
                 ))}
               </div>
               {recentRoundRows.length > 0 ? (
-                recentRoundRows.map((row) => (
+                recentRoundRows.map((row, rowIndex) => (
                   <div className="round-score-row" key={`recent-${row.id}`}>
                     <span>{row.cards}</span>
                     {players.map((player) => (
                       <span
                         key={`recent-${row.id}-${player.seatId}`}
-                        className={`round-score-value ${
-                          row.values[player.seatId]?.penaltySixWindow
-                            ? "penalty-six"
-                            : row.values[player.seatId]?.penaltyThreeWindow
-                              ? "penalty-three"
-                              : row.values[player.seatId]?.warningWindow
-                                ? "penalty-warning"
-                              : ""
-                        }`}
+                        className={`round-score-value ${getRoundScoreWindowClass(
+                          recentRoundRows,
+                          rowIndex,
+                          player.seatId
+                        )}`}
                       >
                         {row.values[player.seatId]?.totalDelta ?? 0}
                       </span>
@@ -1291,21 +1323,17 @@ export default function App() {
                       <span key={`all-header-${player.seatId}`}>{player.name}</span>
                     ))}
                   </div>
-                  {roundScoreRows.map((row) => (
+                  {roundScoreRows.map((row, rowIndex) => (
                     <div className="round-score-row" key={`all-${row.id}`}>
                       <span>{row.cards}</span>
                       {players.map((player) => (
                         <span
                           key={`all-${row.id}-${player.seatId}`}
-                          className={`round-score-value ${
-                            row.values[player.seatId]?.penaltySixWindow
-                              ? "penalty-six"
-                              : row.values[player.seatId]?.penaltyThreeWindow
-                                ? "penalty-three"
-                                : row.values[player.seatId]?.warningWindow
-                                  ? "penalty-warning"
-                                : ""
-                          }`}
+                          className={`round-score-value ${getRoundScoreWindowClass(
+                            roundScoreRows,
+                            rowIndex,
+                            player.seatId
+                          )}`}
                         >
                           {row.values[player.seatId]?.totalDelta ?? 0}
                         </span>

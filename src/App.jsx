@@ -1153,7 +1153,7 @@ export default function App() {
                     Warnings {playerStats[player.seatId].warnings} ({playerStats[player.seatId].warningPenalty})
                   </small>
                   <small>
-                    Stryk-straff {playerStats[player.seatId].streakPenalty}
+                    🚦 {playerStats[player.seatId].streakPenalty}
                   </small>
                 </div>
                 <strong
@@ -1190,7 +1190,7 @@ export default function App() {
               </div>
               {recentRoundRows.map((row) => (
                 <div className="round-score-row" key={`recent-${row.id}`}>
-                  <span>R{row.number}</span>
+                  <span>{row.cards}</span>
                   {players.map((player) => (
                     <span
                       key={`recent-${row.id}-${player.seatId}`}
@@ -1212,7 +1212,6 @@ export default function App() {
               <div className="round-summary-all">
                 <div className="round-score-table full">
                   <div className="round-score-row header">
-                    <span>Runde</span>
                     <span>Kort</span>
                     {players.map((player) => (
                       <span key={`all-header-${player.seatId}`}>{player.name}</span>
@@ -1220,7 +1219,6 @@ export default function App() {
                   </div>
                   {roundScoreRows.map((row) => (
                     <div className="round-score-row" key={`all-${row.id}`}>
-                      <span>R{row.number}</span>
                       <span>{row.cards}</span>
                       {players.map((player) => (
                         <span

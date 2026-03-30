@@ -853,6 +853,13 @@ button {
   font-weight: 600;
 }
 
+.player-cell-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
 .toggle {
   display: flex;
   align-items: center;
@@ -967,7 +974,7 @@ button {
 }
 
 .streak-warning-light {
-  font-size: 16px;
+  font-size: 15px;
   line-height: 1;
 }
 
@@ -990,6 +997,11 @@ button {
 .score-total.penalty-three,
 .round-score-value.penalty-three {
   border: 2px solid rgba(216, 75, 75, 0.34);
+}
+
+.round-score-value.penalty-warning {
+  color: #b13a3a;
+  background: rgba(216, 75, 75, 0.08);
 }
 
 .score-total.penalty-six,

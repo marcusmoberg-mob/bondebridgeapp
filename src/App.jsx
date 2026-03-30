@@ -1081,7 +1081,15 @@ export default function App() {
                           <span>{player.name[0]}</span>
                         )}
                       </span>
-                      {player.name}
+                      <span className="player-cell-name">
+                        {player.name}
+                        {(playerStats[player.seatId].currentMissedInRow === 2 ||
+                          playerStats[player.seatId].currentMissedInRow === 5) && (
+                          <span className="streak-warning-light" title="I fare for ny straff">
+                            ⚠️
+                          </span>
+                        )}
+                      </span>
                     </span>
                   </div>
                   <div className="row-section bid-section">
@@ -1171,9 +1179,10 @@ export default function App() {
                 <div className="score-card-copy">
                   <span className="score-player-name">
                     {player.name}
-                    {playerStats[player.seatId].currentMissedInRow === 2 && (
-                      <span className="streak-warning-light" title="To stryk på rad">
-                        🚦
+                    {(playerStats[player.seatId].currentMissedInRow === 2 ||
+                      playerStats[player.seatId].currentMissedInRow === 5) && (
+                      <span className="streak-warning-light" title="I fare for ny straff">
+                        ⚠️
                       </span>
                     )}
                   </span>
@@ -1228,6 +1237,9 @@ export default function App() {
                             ? "penalty-six"
                             : row.values[player.seatId]?.streakTriggerLevel === 3
                               ? "penalty-three"
+                              : row.values[player.seatId]?.currentMissedInRow === 2 ||
+                                  row.values[player.seatId]?.currentMissedInRow === 5
+                                ? "penalty-warning"
                               : ""
                         }`}
                       >
@@ -1260,6 +1272,9 @@ export default function App() {
                               ? "penalty-six"
                               : row.values[player.seatId]?.streakTriggerLevel === 3
                                 ? "penalty-three"
+                                : row.values[player.seatId]?.currentMissedInRow === 2 ||
+                                    row.values[player.seatId]?.currentMissedInRow === 5
+                                  ? "penalty-warning"
                                 : ""
                           }`}
                         >

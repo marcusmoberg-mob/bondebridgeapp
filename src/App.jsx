@@ -2,8 +2,9 @@ import React, { useEffect, useMemo, useState } from "react";
 
 const MIN_PLAYERS = 3;
 const MAX_PLAYERS = 6;
-const STORAGE_KEY = "bondebridge.savedPlayers.v1";
 const VIEW_MODE_STORAGE_KEY = "bondebridge.viewMode.v1";
+const ACCOUNTS_STORAGE_KEY = "bondebridge.accounts.v1";
+const ACTIVE_USER_STORAGE_KEY = "bondebridge.activeUser.v1";
 
 function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
@@ -27,7 +28,7 @@ function pointsForRound(bid, stood) {
   return 10 + bidNumber * bidNumber;
 }
 
-function buildPlayerStats(rounds, players) {
+function buildScoreSummary(rounds, players) {
   const statsMap = Object.fromEntries(
     players.map((player) => [
       player.seatId,
@@ -37,44 +38,74 @@ function buildPlayerStats(rounds, players) {
         warningPenalty: 0,
         warnings: 0,
         total: 0,
+        currentMissedInRow: 0,
+        latestPenaltyLevel: 0,
       },
     ])
   );
 
-  players.forEach((player) => {
-    let missedInARow = 0;
-    let warningCount = 0;
+  const streakState = Object.fromEntries(players.map((player) => [player.seatId, 0]));
+  const warningState = Object.fromEntries(players.map((player) => [player.seatId, 0]));
 
-    rounds.forEach((round) => {
+  const roundRows = rounds.map((round) => {
+    const row = {
+      id: round.id,
+      number: round.number,
+      cards: round.cards,
+      values: {},
+    };
+
+    players.forEach((player) => {
+      const basePoints = pointsForRound(round.bids[player.seatId], round.stood[player.seatId]);
       const stood = round.stood[player.seatId];
       const warningsInRound = Number(round.warnings?.[player.seatId] || 0);
-
-      statsMap[player.seatId].basePoints += pointsForRound(
-        round.bids[player.seatId],
-        stood
-      );
+      let streakPenaltyDelta = 0;
+      let streakTriggerLevel = 0;
 
       if (stood) {
-        missedInARow = 0;
+        streakState[player.seatId] = 0;
       } else {
-        missedInARow += 1;
-        if (missedInARow === 3) statsMap[player.seatId].streakPenalty -= 10;
-        if (missedInARow === 6) statsMap[player.seatId].streakPenalty -= 30;
+        streakState[player.seatId] += 1;
+        if (streakState[player.seatId] === 3) {
+          streakPenaltyDelta -= 10;
+          streakTriggerLevel = 3;
+        }
+        if (streakState[player.seatId] === 6) {
+          streakPenaltyDelta -= 30;
+          streakTriggerLevel = 6;
+        }
       }
 
-      warningCount += warningsInRound;
-      const penaltySteps = Math.floor(warningCount / 2);
-      statsMap[player.seatId].warningPenalty = penaltySteps * -10;
-      statsMap[player.seatId].warnings = warningCount;
+      const previousWarningPenalty = Math.floor(warningState[player.seatId] / 2) * -10;
+      warningState[player.seatId] += warningsInRound;
+      const nextWarningPenalty = Math.floor(warningState[player.seatId] / 2) * -10;
+      const warningPenaltyDelta = nextWarningPenalty - previousWarningPenalty;
+      const totalDelta = basePoints + streakPenaltyDelta + warningPenaltyDelta;
+
+      statsMap[player.seatId].basePoints += basePoints;
+      statsMap[player.seatId].streakPenalty += streakPenaltyDelta;
+      statsMap[player.seatId].warningPenalty = nextWarningPenalty;
+      statsMap[player.seatId].warnings = warningState[player.seatId];
+      statsMap[player.seatId].total += totalDelta;
+      statsMap[player.seatId].currentMissedInRow = streakState[player.seatId];
+      if (streakTriggerLevel) {
+        statsMap[player.seatId].latestPenaltyLevel = streakTriggerLevel;
+      }
+
+      row.values[player.seatId] = {
+        basePoints,
+        streakPenaltyDelta,
+        warningPenaltyDelta,
+        totalDelta,
+        streakTriggerLevel,
+        currentMissedInRow: streakState[player.seatId],
+      };
     });
 
-    statsMap[player.seatId].total =
-      statsMap[player.seatId].basePoints +
-      statsMap[player.seatId].streakPenalty +
-      statsMap[player.seatId].warningPenalty;
+    return row;
   });
 
-  return statsMap;
+  return { statsMap, roundRows };
 }
 
 function computeOverUnder(totalBids, cards) {
@@ -140,6 +171,20 @@ function buildRounds(cardsFlow, players, previousRounds = []) {
   });
 }
 
+function createDefaultGameState(playerCount = 4) {
+  const basePlayers = createSessionPlayers(playerCount);
+  const peakCards = getMaxCardsPerPlayer(playerCount);
+  return {
+    phase: "setup",
+    playerCount,
+    players: basePlayers,
+    peakCards,
+    roundIndex: 0,
+    rounds: buildRounds(getCardFlowFromPeak(peakCards), basePlayers),
+    savedPlayers: [],
+  };
+}
+
 function readFileAsDataUrl(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -149,17 +194,54 @@ function readFileAsDataUrl(file) {
   });
 }
 
-function loadSavedPlayers() {
+function loadAccounts() {
   if (typeof window === "undefined") return [];
   try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
+    const raw = window.localStorage.getItem(ACCOUNTS_STORAGE_KEY);
     if (!raw) return [];
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
-    return parsed.filter((item) => item && typeof item.id === "string");
+    return parsed.filter(
+      (item) =>
+        item &&
+        typeof item.username === "string" &&
+        typeof item.pin === "string"
+    );
   } catch {
     return [];
   }
+}
+
+function loadActiveUser() {
+  if (typeof window === "undefined") return "";
+  return window.localStorage.getItem(ACTIVE_USER_STORAGE_KEY) || "";
+}
+
+function findAccount(accounts, username) {
+  const normalized = username.trim().toLowerCase();
+  return accounts.find(
+    (account) => account.username.trim().toLowerCase() === normalized
+  );
+}
+
+function getUserDataKey(username) {
+  return `bondebridge.user.${username.trim().toLowerCase()}`;
+}
+
+function loadUserData(username) {
+  if (typeof window === "undefined" || !username) return null;
+  try {
+    const raw = window.localStorage.getItem(getUserDataKey(username));
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+
+function saveUserData(username, data) {
+  if (typeof window === "undefined" || !username) return;
+  window.localStorage.setItem(getUserDataKey(username), JSON.stringify(data));
 }
 
 function loadViewMode() {
@@ -242,17 +324,25 @@ function shouldShowSaveButton(player, seatIndex, savedPlayers) {
 
 export default function App() {
   const [viewMode, setViewMode] = useState(() => loadViewMode());
+  const [accounts, setAccounts] = useState(() => loadAccounts());
+  const [currentUser, setCurrentUser] = useState(() => loadActiveUser());
+  const [authMode, setAuthMode] = useState("login");
+  const [authName, setAuthName] = useState("");
+  const [authPin, setAuthPin] = useState("");
+  const [authError, setAuthError] = useState("");
+  const [hasLoadedUserData, setHasLoadedUserData] = useState(false);
   const [phase, setPhase] = useState("setup");
   const [playerCount, setPlayerCount] = useState(4);
   const [players, setPlayers] = useState(() => createSessionPlayers(4));
   const [peakCards, setPeakCards] = useState(getMaxCardsPerPlayer(4));
   const [roundIndex, setRoundIndex] = useState(0);
-  const [savedPlayers, setSavedPlayers] = useState(() => loadSavedPlayers());
+  const [savedPlayers, setSavedPlayers] = useState([]);
   const [newPlayerName, setNewPlayerName] = useState("");
   const [newPlayerAvatar, setNewPlayerAvatar] = useState("");
   const [dragSeatId, setDragSeatId] = useState(null);
   const [dragOverSeatId, setDragOverSeatId] = useState(null);
   const [dropPosition, setDropPosition] = useState("before");
+  const [showAllRounds, setShowAllRounds] = useState(false);
   const availableSavedPlayers = useMemo(() => {
     const assignedIds = new Set(
       players.map((player) => player.savedPlayerId).filter(Boolean)
@@ -267,25 +357,107 @@ export default function App() {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(savedPlayers));
-  }, [savedPlayers]);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
     window.localStorage.setItem(VIEW_MODE_STORAGE_KEY, viewMode);
   }, [viewMode]);
 
-  const playerStats = useMemo(() => {
-    if (phase !== "game") {
-      return Object.fromEntries(
-        players.map((player) => [
-          player.seatId,
-          { basePoints: 0, streakPenalty: 0, warningPenalty: 0, warnings: 0, total: 0 },
-        ])
-      );
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(ACCOUNTS_STORAGE_KEY, JSON.stringify(accounts));
+  }, [accounts]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (currentUser) {
+      window.localStorage.setItem(ACTIVE_USER_STORAGE_KEY, currentUser);
+    } else {
+      window.localStorage.removeItem(ACTIVE_USER_STORAGE_KEY);
     }
-    return buildPlayerStats(rounds, players);
+  }, [currentUser]);
+
+  useEffect(() => {
+    if (!currentUser) {
+      const fallbackState = createDefaultGameState();
+      setPhase(fallbackState.phase);
+      setPlayerCount(fallbackState.playerCount);
+      setPlayers(fallbackState.players);
+      setPeakCards(fallbackState.peakCards);
+      setRoundIndex(fallbackState.roundIndex);
+      setRounds(fallbackState.rounds);
+      setSavedPlayers(fallbackState.savedPlayers);
+      setHasLoadedUserData(false);
+      return;
+    }
+
+    const stored = loadUserData(currentUser);
+    const fallbackState = createDefaultGameState();
+    const nextState = {
+      ...fallbackState,
+      ...(stored || {}),
+    };
+
+    setPhase(nextState.phase || "setup");
+    setPlayerCount(
+      clamp(Number(nextState.playerCount || fallbackState.playerCount), MIN_PLAYERS, MAX_PLAYERS)
+    );
+    setPlayers(
+      Array.isArray(nextState.players) && nextState.players.length
+        ? nextState.players
+        : fallbackState.players
+    );
+    setPeakCards(Number(nextState.peakCards || fallbackState.peakCards));
+    setRoundIndex(Number(nextState.roundIndex || 0));
+    setRounds(
+      Array.isArray(nextState.rounds) && nextState.rounds.length
+        ? nextState.rounds
+        : fallbackState.rounds
+    );
+    setSavedPlayers(
+      Array.isArray(nextState.savedPlayers) ? nextState.savedPlayers : fallbackState.savedPlayers
+    );
+    setHasLoadedUserData(true);
+  }, [currentUser]);
+
+  useEffect(() => {
+    if (!currentUser || !hasLoadedUserData) return;
+    saveUserData(currentUser, {
+      phase,
+      playerCount,
+      players,
+      peakCards,
+      roundIndex,
+      rounds,
+      savedPlayers,
+    });
+  }, [
+    currentUser,
+    hasLoadedUserData,
+    phase,
+    playerCount,
+    players,
+    peakCards,
+    roundIndex,
+    rounds,
+    savedPlayers,
+  ]);
+
+  const scoreSummary = useMemo(() => {
+    if (phase !== "game") {
+      return {
+        statsMap: Object.fromEntries(
+          players.map((player) => [
+            player.seatId,
+            { basePoints: 0, streakPenalty: 0, warningPenalty: 0, warnings: 0, total: 0 },
+          ])
+        ),
+        roundRows: [],
+      };
+    }
+    return buildScoreSummary(rounds, players);
   }, [phase, players, rounds]);
+
+  const playerStats = scoreSummary.statsMap;
+  const roundScoreRows = scoreSummary.roundRows;
+  const recentRoundRows = roundScoreRows.slice(-5).reverse();
 
   const currentRound = rounds[roundIndex];
   const totalBids = currentRound
@@ -442,12 +614,14 @@ export default function App() {
     setPlayers(normalizedPlayers);
     setRounds(nextRounds);
     setRoundIndex(0);
+    setShowAllRounds(false);
     setPhase("game");
   };
 
   const backToSetup = () => {
     setPhase("setup");
     setRoundIndex(0);
+    setShowAllRounds(false);
     setRounds(buildRounds(cardsFlow, players));
   };
 
@@ -467,13 +641,128 @@ export default function App() {
     );
   };
 
+  const submitAuth = () => {
+    const username = authName.trim();
+    const pin = authPin.trim();
+
+    if (!username || !pin) {
+      setAuthError("Skriv inn brukernavn og PIN.");
+      return;
+    }
+
+    const existing = findAccount(accounts, username);
+
+    if (authMode === "signup") {
+      if (existing) {
+        setAuthError("Denne brukeren finnes allerede.");
+        return;
+      }
+
+      const nextAccounts = [...accounts, { username, pin }];
+      setAccounts(nextAccounts);
+      saveUserData(username, createDefaultGameState());
+      setCurrentUser(username);
+      setAuthError("");
+      setAuthName("");
+      setAuthPin("");
+      return;
+    }
+
+    if (!existing || existing.pin !== pin) {
+      setAuthError("Feil brukernavn eller PIN.");
+      return;
+    }
+
+    setCurrentUser(existing.username);
+    setAuthError("");
+    setAuthName("");
+    setAuthPin("");
+  };
+
+  const logOut = () => {
+    setCurrentUser("");
+    setAuthMode("login");
+    setAuthError("");
+    setAuthPin("");
+  };
+
+  if (!currentUser) {
+    return (
+      <div className={`app-shell view-${viewMode}`}>
+        <div className="app-topbar">
+          <ViewModeToggle viewMode={viewMode} onChange={setViewMode} />
+        </div>
+        <div className="auth-shell">
+          <section className="auth-card">
+            <p className="eyebrow">Bondebridge</p>
+            <h1>Logg inn</h1>
+            <p className="lead">
+              Kontoen lagrer spillere, pågående spill og autosave i denne nettleseren.
+            </p>
+            <div className="auth-tabs">
+              <button
+                type="button"
+                className={authMode === "login" ? "active" : ""}
+                onClick={() => {
+                  setAuthMode("login");
+                  setAuthError("");
+                }}
+              >
+                Logg inn
+              </button>
+              <button
+                type="button"
+                className={authMode === "signup" ? "active" : ""}
+                onClick={() => {
+                  setAuthMode("signup");
+                  setAuthError("");
+                }}
+              >
+                Opprett konto
+              </button>
+            </div>
+            <div className="auth-form">
+              <label>
+                Brukernavn
+                <input
+                  value={authName}
+                  onChange={(event) => setAuthName(event.target.value)}
+                  placeholder="F.eks. Markus"
+                />
+              </label>
+              <label>
+                PIN
+                <input
+                  type="password"
+                  value={authPin}
+                  onChange={(event) => setAuthPin(event.target.value)}
+                  placeholder="4-6 tegn"
+                />
+              </label>
+              {authError && <p className="auth-error">{authError}</p>}
+              <button type="button" className="start-button" onClick={submitAuth}>
+                {authMode === "signup" ? "Opprett konto" : "Logg inn"}
+              </button>
+            </div>
+          </section>
+        </div>
+      </div>
+    );
+  }
+
   if (phase === "setup") {
     const maxCardsPossible = getMaxCardsPerPlayer(playerCount);
 
     return (
       <div className={`app-shell view-${viewMode}`}>
         <div className="app-topbar">
-          <ViewModeToggle viewMode={viewMode} onChange={setViewMode} />
+          <div className="app-topbar-actions">
+            <span className="user-chip">{currentUser}</span>
+            <button type="button" className="ghost small" onClick={logOut}>
+              Logg ut
+            </button>
+            <ViewModeToggle viewMode={viewMode} onChange={setViewMode} />
+          </div>
         </div>
         <div className="start-shell">
         <section className="start-card">
@@ -689,7 +978,13 @@ export default function App() {
   return (
     <div className={`app-shell view-${viewMode}`}>
       <div className="app-topbar">
-        <ViewModeToggle viewMode={viewMode} onChange={setViewMode} />
+        <div className="app-topbar-actions">
+          <span className="user-chip">{currentUser}</span>
+          <button type="button" className="ghost small" onClick={logOut}>
+            Logg ut
+          </button>
+          <ViewModeToggle viewMode={viewMode} onChange={setViewMode} />
+        </div>
       </div>
       <div className="game-shell">
       <header className="game-header">
@@ -846,7 +1141,14 @@ export default function App() {
             {players.map((player) => (
               <div className="score-card" key={player.seatId}>
                 <div className="score-card-copy">
-                  <span>{player.name}</span>
+                  <span className="score-player-name">
+                    {player.name}
+                    {playerStats[player.seatId].currentMissedInRow === 2 && (
+                      <span className="streak-warning-light" title="To stryk på rad">
+                        🚦
+                      </span>
+                    )}
+                  </span>
                   <small>
                     Warnings {playerStats[player.seatId].warnings} ({playerStats[player.seatId].warningPenalty})
                   </small>
@@ -854,9 +1156,91 @@ export default function App() {
                     Stryk-straff {playerStats[player.seatId].streakPenalty}
                   </small>
                 </div>
-                <strong>{playerStats[player.seatId].total}</strong>
+                <strong
+                  className={`score-total ${
+                    playerStats[player.seatId].currentMissedInRow >= 6
+                      ? "penalty-six"
+                      : playerStats[player.seatId].currentMissedInRow >= 3
+                        ? "penalty-three"
+                        : ""
+                  }`}
+                >
+                  {playerStats[player.seatId].total}
+                </strong>
               </div>
             ))}
+          </div>
+          <div className="round-summary">
+            <div className="round-summary-header">
+              <h4>Siste 5 runder</h4>
+              <button
+                type="button"
+                className="ghost small"
+                onClick={() => setShowAllRounds((previous) => !previous)}
+              >
+                {showAllRounds ? "Skjul alle" : "Vis alle"}
+              </button>
+            </div>
+            <div className="round-score-table">
+              <div className="round-score-row header">
+                <span>Runde</span>
+                {players.map((player) => (
+                  <span key={`recent-header-${player.seatId}`}>{player.name}</span>
+                ))}
+              </div>
+              {recentRoundRows.map((row) => (
+                <div className="round-score-row" key={`recent-${row.id}`}>
+                  <span>R{row.number}</span>
+                  {players.map((player) => (
+                    <span
+                      key={`recent-${row.id}-${player.seatId}`}
+                      className={`round-score-value ${
+                        row.values[player.seatId]?.streakTriggerLevel === 6
+                          ? "penalty-six"
+                          : row.values[player.seatId]?.streakTriggerLevel === 3
+                            ? "penalty-three"
+                            : ""
+                      }`}
+                    >
+                      {row.values[player.seatId]?.totalDelta ?? 0}
+                    </span>
+                  ))}
+                </div>
+              ))}
+            </div>
+            {showAllRounds && (
+              <div className="round-summary-all">
+                <div className="round-score-table full">
+                  <div className="round-score-row header">
+                    <span>Runde</span>
+                    <span>Kort</span>
+                    {players.map((player) => (
+                      <span key={`all-header-${player.seatId}`}>{player.name}</span>
+                    ))}
+                  </div>
+                  {roundScoreRows.map((row) => (
+                    <div className="round-score-row" key={`all-${row.id}`}>
+                      <span>R{row.number}</span>
+                      <span>{row.cards}</span>
+                      {players.map((player) => (
+                        <span
+                          key={`all-${row.id}-${player.seatId}`}
+                          className={`round-score-value ${
+                            row.values[player.seatId]?.streakTriggerLevel === 6
+                              ? "penalty-six"
+                              : row.values[player.seatId]?.streakTriggerLevel === 3
+                                ? "penalty-three"
+                                : ""
+                          }`}
+                        >
+                          {row.values[player.seatId]?.totalDelta ?? 0}
+                        </span>
+                      ))}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </section>
       </main>

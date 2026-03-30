@@ -42,6 +42,25 @@ body {
   padding: 18px 24px 0;
 }
 
+.app-topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.user-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 38px;
+  padding: 0 14px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.76);
+  border: 1px solid rgba(255, 255, 255, 0.82);
+  color: #406074;
+  font-size: 14px;
+  font-weight: 700;
+}
+
 .view-mode-toggle {
   display: inline-flex;
   align-items: center;
@@ -89,6 +108,60 @@ body {
   padding: 24px;
 }
 
+.auth-shell {
+  min-height: calc(100vh - 76px);
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+
+.auth-card {
+  width: min(520px, 100%);
+  background: var(--glass);
+  border: 1px solid rgba(255, 255, 255, 0.66);
+  border-radius: 28px;
+  box-shadow: 0 20px 46px rgba(45, 78, 106, 0.1);
+  padding: 28px;
+  backdrop-filter: blur(12px);
+}
+
+.auth-tabs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.auth-tabs button {
+  min-height: 44px;
+  background: rgba(255, 255, 255, 0.9);
+  border-color: var(--line);
+  color: #567082;
+}
+
+.auth-tabs button.active {
+  background: rgba(47, 143, 240, 0.14);
+  border-color: rgba(47, 143, 240, 0.3);
+  color: #0f4f85;
+}
+
+.auth-form {
+  display: grid;
+  gap: 14px;
+}
+
+.auth-form label {
+  display: grid;
+  gap: 8px;
+}
+
+.auth-error {
+  margin: 0;
+  color: #9b2f2f;
+  font-size: 14px;
+  font-weight: 700;
+}
+
 .start-card {
   width: min(1060px, 100%);
   background: var(--glass);
@@ -123,6 +196,11 @@ h2 {
 h3 {
   margin: 0 0 14px;
   font-size: 22px;
+}
+
+h4 {
+  margin: 0;
+  font-size: 16px;
 }
 
 .lead {
@@ -871,18 +949,103 @@ button {
   gap: 4px;
 }
 
+.score-player-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.streak-warning-light {
+  font-size: 16px;
+  line-height: 1;
+}
+
 .score-card-copy small {
   color: var(--muted);
   font-size: 13px;
   line-height: 1.35;
 }
 
+.score-total,
+.round-score-value {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 42px;
+  min-height: 32px;
+  border-radius: 8px;
+}
+
+.score-total.penalty-three,
+.round-score-value.penalty-three {
+  border: 2px solid rgba(216, 75, 75, 0.34);
+}
+
+.score-total.penalty-six,
+.round-score-value.penalty-six {
+  border: 2px solid rgba(155, 47, 47, 0.55);
+  background: rgba(216, 75, 75, 0.08);
+}
+
 .score-card strong {
   font-size: 30px;
 }
 
+.round-summary {
+  margin-top: 14px;
+  display: grid;
+  gap: 10px;
+}
+
+.round-summary-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.round-score-table {
+  display: grid;
+  gap: 6px;
+}
+
+.round-score-row {
+  display: grid;
+  grid-template-columns: 58px repeat(6, minmax(0, 1fr));
+  gap: 8px;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(27, 42, 55, 0.08);
+  font-size: 13px;
+}
+
+.round-score-row.header {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.round-score-row span {
+  min-width: 0;
+}
+
+.round-summary-all {
+  padding-top: 4px;
+}
+
+.round-score-table.full {
+  max-height: 260px;
+  overflow: auto;
+  padding-right: 4px;
+}
+
 .view-tablet .app-topbar {
   padding: 14px 18px 0;
+}
+
+.view-tablet .app-topbar-actions {
+  gap: 8px;
 }
 
 .view-tablet .view-mode-toggle {
@@ -900,10 +1063,19 @@ button {
   align-items: start;
 }
 
+.view-tablet .auth-shell {
+  padding: 16px 18px 28px;
+  align-items: start;
+}
+
 .view-tablet .start-card {
   width: min(940px, 100%);
   padding: 28px;
   border-radius: 28px;
+}
+
+.view-tablet .auth-card {
+  width: min(680px, 100%);
 }
 
 .view-tablet .lead {
@@ -967,13 +1139,13 @@ button {
 }
 
 .view-tablet .game-layout {
-  grid-template-columns: 1fr;
-  gap: 14px;
+  grid-template-columns: minmax(0, 1.45fr) 300px;
+  gap: 12px;
   align-items: start;
 }
 
 .view-tablet .panel {
-  padding: 18px;
+  padding: 16px;
 }
 
 .view-tablet .round-nav button,
@@ -998,79 +1170,61 @@ button {
 }
 
 .view-tablet .row {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px 14px;
-  font-size: 17px;
-  padding: 14px;
-  border: 1px solid var(--line);
-  border-radius: 18px;
-  background: rgba(255, 255, 255, 0.92);
+  grid-template-columns: 0.9fr 1.15fr 1fr 0.9fr 0.42fr 0.48fr;
+  gap: 8px;
+  font-size: 15px;
+  padding: 10px 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
 }
 
 .view-tablet .row.header {
-  font-size: 12px;
-  display: none;
-}
-
-.view-tablet .row-section {
+  font-size: 11px;
   display: grid;
-  gap: 8px;
-}
-
-.view-tablet .section-label {
-  display: block;
-  font-size: 12px;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--muted);
-  font-weight: 700;
-}
-
-.view-tablet .player-section {
-  grid-column: 1 / -1;
-}
-
-.view-tablet .bid-section {
-  grid-column: 1 / -1;
 }
 
 .view-tablet .player-cell {
-  font-size: 19px;
-  gap: 14px;
+  font-size: 16px;
+  gap: 10px;
   padding-left: 0;
 }
 
 .view-tablet .avatar-wrap.tiny {
-  width: 58px;
-  height: 58px;
+  width: 46px;
+  height: 46px;
 }
 
 .view-tablet .warning-value,
 .view-tablet .mono {
-  font-size: 18px;
+  font-size: 16px;
 }
 
 .view-tablet .scoreboard {
   grid-template-columns: 1fr;
-  gap: 10px;
+  gap: 8px;
 }
 
 .view-tablet .score-panel {
   position: static;
-  order: 2;
+  order: 0;
 }
 
 .view-tablet .score-card {
-  padding: 12px;
-  font-size: 16px;
+  padding: 10px 12px;
+  font-size: 15px;
 }
 
 .view-tablet .score-card strong {
-  font-size: 24px;
+  font-size: 22px;
 }
 
 .view-tablet .score-card-copy small {
   font-size: 12px;
+}
+
+.view-tablet .streak-warning-light {
+  font-size: 14px;
 }
 
 .view-tablet .signal-copy p:last-child {
@@ -1078,36 +1232,34 @@ button {
 }
 
 .view-tablet .warning-controls {
-  gap: 6px;
+  gap: 4px;
 }
 
 .view-tablet .warning-button {
-  min-width: 52px;
-  font-size: 15px;
+  min-width: 44px;
+  min-height: 42px;
+  padding: 0 8px;
+  font-size: 14px;
 }
 
 .view-tablet .state-button {
-  min-width: 98px;
-  font-size: 16px;
-}
-
-.view-tablet .bid-picker {
-  grid-template-columns: repeat(6, minmax(40px, 1fr));
-}
-
-.view-tablet .bid-picker button {
+  min-width: 82px;
+  min-height: 42px;
   font-size: 15px;
 }
 
-.view-tablet .table {
-  gap: 12px;
+.view-tablet .bid-picker {
+  grid-template-columns: repeat(5, minmax(34px, 1fr));
+  gap: 5px;
 }
 
-.view-tablet .warning-section,
-.view-tablet .status-section,
-.view-tablet .points-section,
-.view-tablet .total-section {
-  align-content: start;
+.view-tablet .bid-picker button {
+  min-height: 42px;
+  font-size: 14px;
+}
+
+.view-tablet .table {
+  gap: 6px;
 }
 
 .view-tablet .score-card-copy {
@@ -1116,6 +1268,35 @@ button {
 
 .view-tablet .score-panel h3 {
   margin-bottom: 10px;
+}
+
+.view-tablet .round-summary {
+  margin-top: 12px;
+  gap: 8px;
+}
+
+.view-tablet .round-summary-header {
+  align-items: center;
+}
+
+.view-tablet .round-summary-header .ghost.small {
+  padding: 6px 8px;
+  font-size: 12px;
+}
+
+.view-tablet .round-score-row {
+  grid-template-columns: 42px repeat(6, minmax(0, 1fr));
+  gap: 6px;
+  padding: 6px 0;
+  font-size: 11px;
+}
+
+.view-tablet .round-score-row.header {
+  font-size: 10px;
+}
+
+.view-tablet .round-score-table.full {
+  max-height: 220px;
 }
 
 @media (max-width: 980px) {

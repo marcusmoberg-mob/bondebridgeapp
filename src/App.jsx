@@ -99,10 +99,41 @@ function buildScoreSummary(rounds, players) {
         totalDelta,
         streakTriggerLevel,
         currentMissedInRow: streakState[player.seatId],
+        warningWindow: false,
+        penaltyThreeWindow: false,
+        penaltySixWindow: false,
       };
     });
 
     return row;
+  });
+
+  players.forEach((player) => {
+    roundRows.forEach((row, index) => {
+      const value = row.values[player.seatId];
+      if (!value) return;
+
+      if (value.currentMissedInRow === 2 || value.currentMissedInRow === 5) {
+        for (let offset = 0; offset < 2; offset += 1) {
+          const target = roundRows[index - offset]?.values[player.seatId];
+          if (target) target.warningWindow = true;
+        }
+      }
+
+      if (value.currentMissedInRow === 3) {
+        for (let offset = 0; offset < 3; offset += 1) {
+          const target = roundRows[index - offset]?.values[player.seatId];
+          if (target) target.penaltyThreeWindow = true;
+        }
+      }
+
+      if (value.currentMissedInRow === 6) {
+        for (let offset = 0; offset < 6; offset += 1) {
+          const target = roundRows[index - offset]?.values[player.seatId];
+          if (target) target.penaltySixWindow = true;
+        }
+      }
+    });
   });
 
   return { statsMap, roundRows };
@@ -1233,12 +1264,11 @@ export default function App() {
                       <span
                         key={`recent-${row.id}-${player.seatId}`}
                         className={`round-score-value ${
-                          row.values[player.seatId]?.streakTriggerLevel === 6
+                          row.values[player.seatId]?.penaltySixWindow
                             ? "penalty-six"
-                            : row.values[player.seatId]?.streakTriggerLevel === 3
+                            : row.values[player.seatId]?.penaltyThreeWindow
                               ? "penalty-three"
-                              : row.values[player.seatId]?.currentMissedInRow === 2 ||
-                                  row.values[player.seatId]?.currentMissedInRow === 5
+                              : row.values[player.seatId]?.warningWindow
                                 ? "penalty-warning"
                               : ""
                         }`}
@@ -1268,12 +1298,11 @@ export default function App() {
                         <span
                           key={`all-${row.id}-${player.seatId}`}
                           className={`round-score-value ${
-                            row.values[player.seatId]?.streakTriggerLevel === 6
+                            row.values[player.seatId]?.penaltySixWindow
                               ? "penalty-six"
-                              : row.values[player.seatId]?.streakTriggerLevel === 3
+                              : row.values[player.seatId]?.penaltyThreeWindow
                                 ? "penalty-three"
-                                : row.values[player.seatId]?.currentMissedInRow === 2 ||
-                                    row.values[player.seatId]?.currentMissedInRow === 5
+                                : row.values[player.seatId]?.warningWindow
                                   ? "penalty-warning"
                                 : ""
                           }`}

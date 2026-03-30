@@ -748,6 +748,17 @@ button {
   font-size: 16px;
 }
 
+.round-nav .next-round-button {
+  background: linear-gradient(135deg, #56a6ff, #2f8ff0);
+  border-color: rgba(47, 143, 240, 0.38);
+  color: #fff;
+  box-shadow: 0 12px 24px rgba(47, 143, 240, 0.22);
+}
+
+.round-nav .next-round-button:hover {
+  filter: brightness(1.03);
+}
+
 .melding-signal {
   display: flex;
   gap: 14px;
@@ -1032,6 +1043,13 @@ button {
 
 .round-summary-all {
   padding-top: 4px;
+}
+
+.round-summary-empty {
+  margin: 0;
+  padding: 10px 0 2px;
+  color: var(--muted);
+  font-size: 13px;
 }
 
 .round-score-table.full {

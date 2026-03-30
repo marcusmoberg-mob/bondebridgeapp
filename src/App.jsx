@@ -155,7 +155,7 @@ function buildRounds(cardsFlow, players, previousRounds = []) {
     const warnings = { ...(previous?.warnings || {}) };
 
     players.forEach((player) => {
-      if (!(player.seatId in bids)) bids[player.seatId] = "";
+      if (!(player.seatId in bids) || bids[player.seatId] === "") bids[player.seatId] = "0";
       if (!(player.seatId in stood)) stood[player.seatId] = true;
       if (!(player.seatId in warnings)) warnings[player.seatId] = 0;
     });
@@ -167,6 +167,7 @@ function buildRounds(cardsFlow, players, previousRounds = []) {
       bids,
       stood,
       warnings,
+      completed: Boolean(previous?.completed),
     };
   });
 }
@@ -396,21 +397,26 @@ export default function App() {
     };
 
     setPhase(nextState.phase || "setup");
+    const nextPlayers =
+      Array.isArray(nextState.players) && nextState.players.length
+        ? nextState.players
+        : fallbackState.players;
+    const nextPeakCards = Number(nextState.peakCards || fallbackState.peakCards);
     setPlayerCount(
       clamp(Number(nextState.playerCount || fallbackState.playerCount), MIN_PLAYERS, MAX_PLAYERS)
     );
-    setPlayers(
-      Array.isArray(nextState.players) && nextState.players.length
-        ? nextState.players
-        : fallbackState.players
-    );
-    setPeakCards(Number(nextState.peakCards || fallbackState.peakCards));
-    setRoundIndex(Number(nextState.roundIndex || 0));
-    setRounds(
+    setPlayers(nextPlayers);
+    setPeakCards(nextPeakCards);
+    const normalizedRounds = buildRounds(
+      getCardFlowFromPeak(nextPeakCards),
+      nextPlayers,
       Array.isArray(nextState.rounds) && nextState.rounds.length
         ? nextState.rounds
         : fallbackState.rounds
     );
+
+    setRoundIndex(clamp(Number(nextState.roundIndex || 0), 0, normalizedRounds.length - 1));
+    setRounds(normalizedRounds);
     setSavedPlayers(
       Array.isArray(nextState.savedPlayers) ? nextState.savedPlayers : fallbackState.savedPlayers
     );
@@ -452,7 +458,7 @@ export default function App() {
         roundRows: [],
       };
     }
-    return buildScoreSummary(rounds, players);
+    return buildScoreSummary(rounds.filter((round) => round.completed), players);
   }, [phase, players, rounds]);
 
   const playerStats = scoreSummary.statsMap;
@@ -639,6 +645,27 @@ export default function App() {
         };
       })
     );
+  };
+
+  const goToPreviousRound = () => {
+    setRoundIndex((prev) => clamp(prev - 1, 0, rounds.length - 1));
+  };
+
+  const goToNextRound = () => {
+    if (!rounds.length) return;
+
+    setRounds((previous) =>
+      previous.map((round, index) =>
+        index === roundIndex
+          ? {
+              ...round,
+              completed: true,
+            }
+          : round
+      )
+    );
+
+    setRoundIndex((prev) => clamp(prev + 1, 0, rounds.length - 1));
   };
 
   const submitAuth = () => {
@@ -1005,15 +1032,16 @@ export default function App() {
           <div className="round-nav">
             <button
               type="button"
-              onClick={() => setRoundIndex((prev) => clamp(prev - 1, 0, rounds.length - 1))}
+              onClick={goToPreviousRound}
             >
               Forrige runde
             </button>
             <button
               type="button"
-              onClick={() => setRoundIndex((prev) => clamp(prev + 1, 0, rounds.length - 1))}
+              className="next-round-button"
+              onClick={goToNextRound}
             >
-              Neste runde
+              {roundIndex === rounds.length - 1 ? "Lagre siste runde" : "Neste runde"}
             </button>
           </div>
 
@@ -1037,7 +1065,7 @@ export default function App() {
               <span>Total</span>
             </div>
             {players.map((player) => {
-              const bidValue = currentRound?.bids[player.seatId] ?? "";
+              const bidValue = currentRound?.bids[player.seatId] ?? "0";
               const stoodValue = currentRound?.stood[player.seatId] ?? true;
               const warningValue = Number(currentRound?.warnings[player.seatId] ?? 0);
               const roundPoints = pointsForRound(bidValue, stoodValue);
@@ -1066,7 +1094,7 @@ export default function App() {
                         <button
                           key={`${player.seatId}-${bid}`}
                           type="button"
-                          className={Number(bidValue) === bid && bidValue !== "" ? "active" : ""}
+                          className={Number(bidValue) === bid ? "active" : ""}
                           onClick={() => updateRoundField(player.seatId, "bids", String(bid))}
                         >
                           {bid}
@@ -1188,25 +1216,29 @@ export default function App() {
                   <span key={`recent-header-${player.seatId}`}>{player.name}</span>
                 ))}
               </div>
-              {recentRoundRows.map((row) => (
-                <div className="round-score-row" key={`recent-${row.id}`}>
-                  <span>{row.cards}</span>
-                  {players.map((player) => (
-                    <span
-                      key={`recent-${row.id}-${player.seatId}`}
-                      className={`round-score-value ${
-                        row.values[player.seatId]?.streakTriggerLevel === 6
-                          ? "penalty-six"
-                          : row.values[player.seatId]?.streakTriggerLevel === 3
-                            ? "penalty-three"
-                            : ""
-                      }`}
-                    >
-                      {row.values[player.seatId]?.totalDelta ?? 0}
-                    </span>
-                  ))}
-                </div>
-              ))}
+              {recentRoundRows.length > 0 ? (
+                recentRoundRows.map((row) => (
+                  <div className="round-score-row" key={`recent-${row.id}`}>
+                    <span>{row.cards}</span>
+                    {players.map((player) => (
+                      <span
+                        key={`recent-${row.id}-${player.seatId}`}
+                        className={`round-score-value ${
+                          row.values[player.seatId]?.streakTriggerLevel === 6
+                            ? "penalty-six"
+                            : row.values[player.seatId]?.streakTriggerLevel === 3
+                              ? "penalty-three"
+                              : ""
+                        }`}
+                      >
+                        {row.values[player.seatId]?.totalDelta ?? 0}
+                      </span>
+                    ))}
+                  </div>
+                ))
+              ) : (
+                <p className="round-summary-empty">Ingen spilte runder ennå.</p>
+              )}
             </div>
             {showAllRounds && (
               <div className="round-summary-all">

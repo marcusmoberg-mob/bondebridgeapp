@@ -1244,6 +1244,16 @@ export default function App() {
                       </span>
                     </span>
                   </div>
+                  <div className="row-section score-strip">
+                    <div className="row-section points-section compact-stat">
+                      <span className="section-label">Poeng</span>
+                      <span className="mono">{roundPoints}</span>
+                    </div>
+                    <div className="row-section total-section compact-stat">
+                      <span className="section-label">Total</span>
+                      <span className="mono">{playerStats[player.seatId].total}</span>
+                    </div>
+                  </div>
                   <div className="row-section bid-section">
                     <span className="section-label">Melding</span>
                     <div className="count-chips bid-picker">
@@ -1308,14 +1318,6 @@ export default function App() {
                         W+
                       </button>
                     </div>
-                  </div>
-                  <div className="row-section points-section">
-                    <span className="section-label">Poeng</span>
-                    <span className="mono">{roundPoints}</span>
-                  </div>
-                  <div className="row-section total-section">
-                    <span className="section-label">Total</span>
-                    <span className="mono">{playerStats[player.seatId].total}</span>
                   </div>
                 </div>
               );
